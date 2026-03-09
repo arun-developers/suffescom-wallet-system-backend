@@ -5,6 +5,8 @@ const TransactionLog = require("../models/TransactionLog");
 const { v4: uuidv4 } = require("uuid");
 const withdrawalQueue = require("../queues/withdrawalQueue");
 const Transaction = require("../models/Transaction");
+const User = require("../models/User");
+const bcrypt = require("bcrypt");
 
 exports.withdrawWalletBalance = async (req, res) => {
     const session = await mongoose.startSession();
@@ -12,7 +14,7 @@ exports.withdrawWalletBalance = async (req, res) => {
     try {
         session.startTransaction();
         const user = req.user;
-        const { amount, destination = "user-payment-destination", transactionId } = req.body;
+        const { amount, destination = "user-payment-destination", transactionId, transaction_pin } = req.body;
 
         if (!user || !user._id) {
             throw new Error("Unauthorized user");
@@ -20,6 +22,22 @@ exports.withdrawWalletBalance = async (req, res) => {
 
         if (!amount || typeof amount !== "number" || amount <= 0) {
             throw new Error("Invalid withdrawal amount");
+        }
+
+        const userData = await User.findById(user._id);
+        if (!userData) {
+            return res.status(404).json({
+                status: false,
+                message: "User not found"
+            });
+        }
+
+        const isPinValid = await bcrypt.compare(transaction_pin, userData.transaction_pin);
+        if (!isPinValid) {
+            return res.status(400).json({
+                status: false,
+                message: "Invalid transaction PIN"
+            });
         }
 
         const existingTransaction = await Transaction.findOne({ user_id: user._id, transactionId: transactionId });

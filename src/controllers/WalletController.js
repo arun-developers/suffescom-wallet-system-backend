@@ -1,10 +1,12 @@
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
+const User = require("../models/User");
+const bcrypt = require("bcrypt");
 
 exports.AddWalletBalance = async (req, res) => {
     try {
         const user = req.user;
-        const { balance, transactionId } = req.body;
+        const { balance, transactionId, transaction_pin } = req.body;
 
         if (!user || !user._id) {
             return res.status(401).json({
@@ -17,6 +19,22 @@ exports.AddWalletBalance = async (req, res) => {
             return res.status(400).json({
                 status: false,
                 message: "Invalid balance amount"
+            });
+        }
+
+        const userData = await User.findById(user._id);
+        if (!userData) {
+            return res.status(404).json({
+                status: false,
+                message: "User not found"
+            });
+        }
+
+        const isPinValid = await bcrypt.compare(transaction_pin, userData.transaction_pin);
+        if (!isPinValid) {
+            return res.status(400).json({
+                status: false,
+                message: "Invalid transaction PIN"
             });
         }
 

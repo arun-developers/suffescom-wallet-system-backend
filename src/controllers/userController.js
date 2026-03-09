@@ -3,14 +3,14 @@ const Users = require("../models/User");
 const SignToken = require("../utils/signToken");
 
 exports.createUser = async (req, res) => {
-    const { name, email } = req.body;
+    const { name, email, transaction_pin } = req.body;
 
     try {
         let user = await Users.findOne({ email });
         let isNew = false;
 
         if (!user) {
-            user = await Users.create({ name, email });
+            user = await Users.create({ name, email, transaction_pin });
             isNew = true;
         }
 
